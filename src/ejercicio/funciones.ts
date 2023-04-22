@@ -1,5 +1,6 @@
 import { Funko } from "./funko.js";
 import {readFileSync, readdirSync, writeFileSync, unlinkSync, existsSync, mkdirSync } from 'fs';
+import {readdir, read} from 'fs';
 import chalk from "chalk";
 import { Genero, Tipo, RequestType, ResponseType } from "./types.js";
 import { normalize } from "path";
@@ -27,11 +28,11 @@ export function leerFunkos(usuario: string): Funko[] {
  * función que añade un funko a la colección de un usuario
  * @param usuario usuario al que se quiere añadir el funko
  */
-export function addFunko(peticion: RequestType): ResponseType{
+export function addFunko(funko: Funko, usuario: string): boolean{
 
 // 1. comprobar que el usuario existe
-  const nombre_usuario = peticion.user;
-  const id = peticion.id;
+  const nombre_usuario = usuario;
+  const id = funko.getID;
   const path = "./database/" + nombre_usuario;
   if (existsSync(path) === false) {
     // si no existe la carpeta del usuario, la creo
@@ -50,22 +51,12 @@ export function addFunko(peticion: RequestType): ResponseType{
     
   });
   if (bandera === true) {
-    if (peticion.funko !== undefined) {
-      writeFileSync('./database/' + peticion.user + '/' + peticion.nombre + '.json', JSON.stringify(peticion.funko[0]));
-      const respueta: ResponseType = {
-        comando: 'add',
-        success: true,
-        cadena: `Funko added to ${nombre_usuario} collection!`
-      }
-      return respueta;
+    if (funko !== undefined) {
+      writeFileSync('./database/' + nombre_usuario + '/' + funko.getNombre + '.json', JSON.stringify(funko));
+      return true;
     }
   }
-  const respuesta: ResponseType = {
-    comando: 'add',
-    success: false,
-    cadena: `Funko already exists at ${nombre_usuario} collection!`
-  }
-  return respuesta;
+  return false;
 }
 
 /**
@@ -125,69 +116,69 @@ export function eliminarFunko(usuario:string, ID_: number): boolean {
  * @param valorMercado valor de mercado del funko
  * @returns true si se ha modificado correctamente, false si no.
  */
-export function modificarFunko(peticion: RequestType): ResponseType {
-  // 1. comprobar que el usuario existe
-  const nombre_usuario = peticion.user;
-  const id = peticion.id;
-  const path = "./database/" + nombre_usuario;
-  if (existsSync(path) === false) {
-    console.log(chalk.red(`User ${nombre_usuario} does not exist`));
-    const respuesta: ResponseType = {
-      comando: 'update',
-      success: false,
-      cadena: `User ${nombre_usuario} does not exist`
-    }
-    return respuesta;
-  }
-  const filenames = readdirSync("./database/" + nombre_usuario);
+// export function modificarFunko(peticion: RequestType): ResponseType {
+//   // 1. comprobar que el usuario existe
+//   const nombre_usuario = peticion.user;
+//   const id = peticion.id;
+//   const path = "./database/" + nombre_usuario;
+//   if (existsSync(path) === false) {
+//     console.log(chalk.red(`User ${nombre_usuario} does not exist`));
+//     const respuesta: ResponseType = {
+//       comando: 'update',
+//       success: false,
+//       cadena: `User ${nombre_usuario} does not exist`
+//     }
+//     return respuesta;
+//   }
+//   const filenames = readdirSync("./database/" + nombre_usuario);
 
-  // comprobar que el funko existe
-  let bandera = false;
-  let nombre_aux = '';
-  filenames.forEach((file) => {
-    const contenido = readFileSync("./database/" + nombre_usuario + "/" + file, 'utf8');
-    const json = JSON.parse(contenido);
-    if (json.ID == id) {
-      // el funko ya existe
-      bandera = true;
-      nombre_aux = json.nombre;
-    }
-  });
+//   // comprobar que el funko existe
+//   let bandera = false;
+//   let nombre_aux = '';
+//   filenames.forEach((file) => {
+//     const contenido = readFileSync("./database/" + nombre_usuario + "/" + file, 'utf8');
+//     const json = JSON.parse(contenido);
+//     if (json.ID == id) {
+//       // el funko ya existe
+//       bandera = true;
+//       nombre_aux = json.nombre;
+//     }
+//   });
 
-  if (bandera === false) {
-    console.log(chalk.red(`Funko not found at ${nombre_usuario} collection!`));
-    const respuesta: ResponseType = {
-      comando: 'update',
-      success: false,
-      cadena: `Funko not found at ${nombre_usuario} collection!`
-    }
-    return respuesta;
-  }
-  else {
+//   if (bandera === false) {
+//     console.log(chalk.red(`Funko not found at ${nombre_usuario} collection!`));
+//     const respuesta: ResponseType = {
+//       comando: 'update',
+//       success: false,
+//       cadena: `Funko not found at ${nombre_usuario} collection!`
+//     }
+//     return respuesta;
+//   }
+//   else {
     
-    // eliminar el fichero correspondiente al funko
-    unlinkSync("./database/" + nombre_usuario + "/" + nombre_aux + ".json"); 
-    // crear el nuevo funko
-    if (peticion.funko !== undefined) {
-      writeFileSync('./database/' + peticion.user + '/' + peticion.nombre + '.json', JSON.stringify(peticion.funko[0]));
-      console.log(chalk.green(`Funko modified at ${nombre_usuario} collection!`));
+//     // eliminar el fichero correspondiente al funko
+//     unlinkSync("./database/" + nombre_usuario + "/" + nombre_aux + ".json"); 
+//     // crear el nuevo funko
+//     if (peticion.funko !== undefined) {
+//       writeFileSync('./database/' + peticion.user + '/' + peticion.nombre + '.json', JSON.stringify(peticion.funko[0]));
+//       console.log(chalk.green(`Funko modified at ${nombre_usuario} collection!`));
     
-      const respuesta: ResponseType = {
-        comando: 'update',
-        success: true,
-        cadena: `Funko modified at ${nombre_usuario} collection!`
-      }
-      return respuesta;  
-    }
-    const respuesta: ResponseType = {
-      comando: 'update',
-      success: false,
-      cadena: `Funko not modified at ${nombre_usuario} collection!`
-    }
-    return respuesta;  
-  }
+//       const respuesta: ResponseType = {
+//         comando: 'update',
+//         success: true,
+//         cadena: `Funko modified at ${nombre_usuario} collection!`
+//       }
+//       return respuesta;  
+//     }
+//     const respuesta: ResponseType = {
+//       comando: 'update',
+//       success: false,
+//       cadena: `Funko not modified at ${nombre_usuario} collection!`
+//     }
+//     return respuesta;  
+//   }
 
-}
+// }
 
 
 /**
@@ -221,7 +212,7 @@ export function listaFunkos(usuario: string): Funko[] {
  * @param id identificador del funko
  * @returns true si se ha mostrado correctamente, false si no.
  */
-export function mostrarFunko(usuario: string, id: number): Funko | string {
+export function mostrarFunko(usuario: string, id: number): Funko[] {
   let mi_funko: Funko = new Funko("", "", "Pop!" as Tipo, "Deportes" as Genero, "", 0, false, "", 0, 0);
   // 1. comprobar que el usuario existe
   const nombre_usuario = usuario;
@@ -229,7 +220,7 @@ export function mostrarFunko(usuario: string, id: number): Funko | string {
   let bandera = false;
   if (existsSync(path) === false) {
     console.log(chalk.red(`User ${usuario} does not exist`));
-    return `User ${usuario} does not exist`;
+    return [];
   }
   else {
     // 2. comprobar que el fichero existe
@@ -245,9 +236,9 @@ export function mostrarFunko(usuario: string, id: number): Funko | string {
     });
   }
   if (bandera) {
-    return mi_funko;
+    return [mi_funko];
   }
   console.log(chalk.red(`Funko with ID ${id} does not exist`))
-  return `Funko with ID ${id} does not exist`;
+  return [];
   // return mi_funko;
 }
