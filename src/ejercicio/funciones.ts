@@ -4,139 +4,179 @@ import {readdir, readFile, unlink, writeFile} from 'fs';
 import chalk from "chalk";
 import { Genero, Tipo} from "./types.js";
 
-import { promisify } from 'util';
 
-
-// import fs from "fs/promises";
-// import path from "path";
-
-const readDirAsync = promisify(readdir);
-const readFileAsync = promisify(readFile);
-const unlinkAsync = promisify(unlink);
-const writeFileAsync = promisify(writeFile);
-
-
-export async function leerFunkos(usuario: string): Promise<Funko[]> {
+export function leerFunkos(usuario: string, callback: (error: Error | null, funkos: Funko[]) => void): void {
   const nombre_usuario = usuario;
   const lista_funkos: Funko[] = [];
-  const files = await readDirAsync(`./database/${nombre_usuario}`);
-  
-  for (const file of files) {
-    const contenido = await readFileAsync(`./database/${nombre_usuario}/${file}`, 'utf8');
-    const json = JSON.parse(contenido);
-    lista_funkos.push(new Funko(json.nombre, json.descripcion, json.tipo, json.genero, json.franquicia, json.numero, json.exclusivo, json.caracteristicasEspeciales, json.valorMercado, json.ID));
-  }
-  
-  return lista_funkos;
+  readdir(`./database/${nombre_usuario}`, (error, files) => {
+    if (error) {
+      callback(error, []);
+      return;
+    }
+    const readFiles = files.map(file => {
+      return new Promise<string>((resolve, reject) => {
+        readFile(`./database/${nombre_usuario}/${file}`, 'utf-8', (error, content) => {
+          if (error) {
+            reject(error);
+            return;
+          }
+          resolve(content);
+        });
+      });
+    });
+    Promise.all(readFiles)
+      .then(contents => {
+        contents.forEach(contenido => {
+          const json = JSON.parse(contenido);
+          lista_funkos.push(new Funko(json.nombre, json.descripcion, json.tipo, json.genero, json.franquicia, json.numero, json.exclusivo, json.caracteristicasEspeciales, json.valorMercado, json.ID));
+        });
+        callback(null, lista_funkos);
+      })
+      .catch(error => callback(error, []));
+  });
 }
 
 
-export async function addFunko(funko: Funko, usuario: string): Promise<boolean> {
-  try {
-    // 1. comprobar que el usuario existe
-    const nombre_usuario = usuario;
-    const id = funko.getID;
-    const path = "./database/" + nombre_usuario;
-    if (existsSync(path) === false) {
-      // si no existe la carpeta del usuario, la creo
-      mkdirSync("./database/" + nombre_usuario);
-    }
-    const filenames = await readDirAsync("./database/" + nombre_usuario);
+export function addFunko(funko: Funko, usuario: string, callback: (error: Error | null, resultado: boolean) => void) {
+  const nombre_usuario = usuario;
+  const id = funko.getID;
+  const path = './database/' + nombre_usuario;
 
-    let bandera = true;
-
-    for (const file of filenames) {
-      const contenido = await readFileAsync("./database/" + nombre_usuario + "/" + file, 'utf8');
-      const json = JSON.parse(contenido);
-
-      if (json.ID === id) {
-        // el funko ya existe
-        bandera = false;
-        console.log(chalk.red(`Funko already exists at ${json.user} collection!`));
-        break;
-      }
-    }
-
-    if (bandera === true) {
-      if (funko !== undefined) {
-        await writeFileAsync('./database/' + nombre_usuario + '/' + funko.getNombre + '.json', JSON.stringify(funko));
-        return true;
-      }
-    }
-
-    return false;
-  } catch (error) {
-    console.error(error);
-    return false;
+  if (!existsSync(path)) {
+    // Si la carpeta del usuario no existe, la creamos
+    mkdirSync(path);
   }
+
+  readdir(path, (err, filenames) => {
+    if (err) {
+      console.error(err);
+      callback(err, false);
+      return;
+    }
+
+    let funkoExists = false;
+
+    for (const filename of filenames) {
+      const filepath = path + '/' + filename;
+
+      readFile(filepath, 'utf8', (err, data) => {
+        if (err) {
+          console.error(err);
+          callback(err, false);
+          return;
+        }
+
+        const json = JSON.parse(data);
+
+        if (json.ID === id) {
+          funkoExists = true;
+          callback(null, false);
+          return;
+        }
+      });
+    }
+
+    if (funkoExists) {
+      console.log(`Funko with ID ${id} already exists in ${nombre_usuario}'s collection`);
+      callback(null, false);
+      return;
+    }
+
+    const filename = path + '/' + funko.getNombre + '.json';
+    const data = JSON.stringify(funko);
+
+    writeFile(filename, data, (err) => {
+      if (err) {
+        console.error(err);
+        callback(err, false);
+      } else {
+        console.log(`Funko with ID ${id} added to ${nombre_usuario}'s collection`);
+        callback(null, true);
+      }
+    });
+  });
 }
 
 
-export async function eliminarFunko(usuario: string, ID_: number): Promise<boolean> {
-  try {
-    // 1. comprobar que el usuario existe
-    const nombre_usuario = usuario;
-    const path = "./database/" + nombre_usuario;
-    if (existsSync(path) === false) {
-      console.log(chalk.red(`User ${usuario} does not exist`));
-      return false;
+export function eliminarFunko(usuario: string, ID_: number, callback: (error: Error | null, resultado?: boolean) => void) {
+  // 1. comprobar que el usuario existe
+  const nombre_usuario = usuario;
+  const path = "./database/" + nombre_usuario;
+  if (existsSync(path) === false) {
+    console.log(chalk.red(`User ${usuario} does not exist`));
+    callback(new Error(`User ${usuario} does not exist`));
+    return;
+  }
+  readdir("./database/" + nombre_usuario, (error, filenames) => {
+    if (error) {
+      console.error(error);
+      callback(error);
+      return;
     }
-    const filenames = await readDirAsync("./database/" + nombre_usuario);
 
     // comprobar que el funko existe
     let bandera = false;
     let nombre_aux = 0;
 
-    for (const file of filenames) {
-      const contenido = await readFileAsync("./database/" + nombre_usuario + "/" + file, 'utf8');
-      const json = JSON.parse(contenido);
+    filenames.forEach((file, index) => {
+      readFile("./database/" + nombre_usuario + "/" + file, 'utf8', (err, contenido) => {
+        if (err) {
+          console.error(err);
+          callback(err);
+          return;
+        }
+        const json = JSON.parse(contenido);
 
-      if (json.ID === ID_) {
-        // el funko ya existe
-        bandera = true;
-        nombre_aux = json.nombre;
-        break;
-      }
-    }
+        if (json.ID === ID_) {
+          // el funko ya existe
+          bandera = true;
+          nombre_aux = json.nombre;
+        }
 
-    if (bandera === false) {
-      console.log(chalk.red(`Funko not found at ${usuario} collection!`));
-      return false;
-    } else {
-      // eliminar el fichero correspondiente al funko
-      await unlinkAsync("./database/" + usuario + "/" + nombre_aux + ".json");
-      console.log(chalk.green(`Funko removed from ${usuario} collection!`));
-      return true;
-    }
-  } catch (error) {
-    console.error(error);
-    return false;
-  }
-}
-
-
-export async function listaFunkos(usuario: string): Promise<Funko[]> {
-  const nombre_usuario = usuario;
-  const path = "./database/" + nombre_usuario;
-  if (existsSync(path) === false) {
-    console.log(chalk.red(`User ${usuario} does not exist`));
-    return [];
-  }
-  const lista_funkos = await leerFunkos(usuario);
-  if (lista_funkos.length === 0) {
-    console.log(chalk.red("No funkos in the collection"));
-    return [];
-  }
-  const array_funkos: Funko[] = [];
-
-  lista_funkos.forEach((funko) => {
-    array_funkos.push(funko);   
+        if (index === filenames.length - 1) {
+          if (bandera === false) {
+            console.log(chalk.red(`Funko not found at ${usuario} collection!`));
+            callback(new Error(`Funko not found at ${usuario} collection!`));
+          } else {
+            // eliminar el fichero correspondiente al funko
+            unlink("./database/" + usuario + "/" + nombre_aux + ".json", (error) => {
+              if (error) {
+                console.error(error);
+                callback(error);
+                return;
+              }
+              console.log(chalk.green(`Funko removed from ${usuario} collection!`));
+              callback(null, true);
+            });
+          }
+        }
+      });
+    });
   });
-  return array_funkos;
 }
 
 
-export async function mostrarFunko(usuario: string, id: number): Promise<Funko[]> {
+export function listaFunkos(usuario: string, callback: (error: Error | null, funkos?: Funko[]) => void): void {
+  leerFunkos(usuario, (error, lista_funkos) => {
+    if (error) {
+      callback(error);
+      return;
+    }
+    if (lista_funkos.length === 0) {
+      console.log(chalk.red("No funkos in the collection"));
+      callback(null, []);
+      return;
+    }
+    const array_funkos: Funko[] = [];
+    lista_funkos.forEach((funko) => {
+      array_funkos.push(funko);   
+    });
+    callback(null, array_funkos);
+  });
+}
+
+
+export function mostrarFunko(usuario: string, id: number, callback: (error: Error | null, funkos?: Funko[]) => void): void {
   let mi_funko: Funko = new Funko("", "", "Pop!" as Tipo, "Deportes" as Genero, "", 0, false, "", 0, 0);
   // 1. comprobar que el usuario existe
   const nombre_usuario = usuario;
@@ -144,23 +184,43 @@ export async function mostrarFunko(usuario: string, id: number): Promise<Funko[]
   let bandera = false;
   if (existsSync(path) === false) {
     console.log(chalk.red(`User ${usuario} does not exist`));
-    return [];
+    callback(null, []);
+    return;
   } else {
     // 2. comprobar que el fichero existe
-    const filenames = await readDirAsync("./database/" + nombre_usuario);
-    for (const file of filenames) {
-      const contenido = await readFileAsync("./database/" + nombre_usuario + "/" + file, 'utf8');
-      const json = JSON.parse(contenido);
-
-      if ((json.ID == id) && (bandera === false)) {
-        mi_funko = new Funko(json.nombre, json.descripcion, json.tipo, json.genero, json.franquicia, json.numero, json.exclusivo, json.caracteristicasEspeciales, json.valorMercado, json.ID);
-        bandera = true;
+    let numFiles = 0;
+    readdir("./database/" + nombre_usuario, (error, filenames) => {
+      if (error) {
+        callback(error);
+        return;
       }
-    }
+
+      filenames.forEach((file) => {
+        readFile("./database/" + nombre_usuario + "/" + file, 'utf8', (error, contenido) => {
+          if (error) {
+            callback(error);
+            return;
+          }
+          const json = JSON.parse(contenido);
+          if ((json.ID == id) && (bandera === false)) {
+            mi_funko = new Funko(json.nombre, json.descripcion, json.tipo, json.genero, json.franquicia, json.numero, json.exclusivo, json.caracteristicasEspeciales, json.valorMercado, json.ID);
+            bandera = true;
+          }
+          numFiles++;
+          if (numFiles == filenames.length) {
+            if (!bandera) {
+              console.log(chalk.red(`Funko with ID ${id} does not exist`));
+              callback(null, []);
+              return;
+            }
+            callback(null, [mi_funko]);
+          }
+        });
+      });
+    });
   }
-  if (bandera) {
-    return [mi_funko];
-  }
-  console.log(chalk.red(`Funko with ID ${id} does not exist`))
-  return [];
 }
+
+
+
+
