@@ -4,7 +4,11 @@ import {readdir, readFile, unlink, writeFile} from 'fs';
 import chalk from "chalk";
 import { Genero, Tipo} from "./types.js";
 
-
+/**
+ * Función que lee los ficheros de un usuario
+ * @param usuario nombre del usuario
+ * @param callback callback que se ejecuta al terminar la lectura de los ficheros
+ */
 export function leerFunkos(usuario: string, callback: (error: Error | null, funkos: Funko[]) => void): void {
   const nombre_usuario = usuario;
   const lista_funkos: Funko[] = [];
@@ -36,7 +40,12 @@ export function leerFunkos(usuario: string, callback: (error: Error | null, funk
   });
 }
 
-
+/**
+ * FUnción encargada de añadir un funko a la colección de un usuario
+ * @param funko funko a añadir a la colección del usuario
+ * @param usuario nombre del usuario
+ * @param callback callback que se ejecuta al terminar la operación
+ */
 export function addFunko(funko: Funko, usuario: string, callback: (error: Error | null, resultado: boolean) => void) {
   const nombre_usuario = usuario;
   const id = funko.getID;
@@ -97,7 +106,12 @@ export function addFunko(funko: Funko, usuario: string, callback: (error: Error 
   });
 }
 
-
+/**
+ * 
+ * @param usuario nombre de usuario
+ * @param ID_ id del funko a eliminar
+ * @param callback callback que se ejecuta al terminar la operación
+ */
 export function eliminarFunko(usuario: string, ID_: number, callback: (error: Error | null, resultado?: boolean) => void) {
   // 1. comprobar que el usuario existe
   const nombre_usuario = usuario;
@@ -155,7 +169,11 @@ export function eliminarFunko(usuario: string, ID_: number, callback: (error: Er
   });
 }
 
-
+/**
+ * Función que se encarga de listar los funkos de un usuario
+ * @param usuario nombre del usuario
+ * @param callback callback que se ejecuta al terminar la operación
+ */
 export function listaFunkos(usuario: string, callback: (error: Error | null, funkos?: Funko[]) => void): void {
   leerFunkos(usuario, (error, lista_funkos) => {
     if (error) {
@@ -175,7 +193,12 @@ export function listaFunkos(usuario: string, callback: (error: Error | null, fun
   });
 }
 
-
+/**
+ * Función que se encarga de mostrar un funko de un usuario
+ * @param usuario nombre del usuario
+ * @param id id del funko a mostrar
+ * @param callback callback que se ejecuta al terminar la operación
+ */
 export function mostrarFunko(usuario: string, id: number, callback: (error: Error | null, funkos?: Funko[]) => void): void {
   let mi_funko: Funko = new Funko("", "", "Pop!" as Tipo, "Deportes" as Genero, "", 0, false, "", 0, 0);
   // 1. comprobar que el usuario existe

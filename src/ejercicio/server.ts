@@ -6,7 +6,9 @@ import express from 'express';
 
 const server = express();
 
-
+/**
+ * Función que maneja las peticiones GET
+ */
 server.get('/funkos', (req, res) => {
   // se recibe sólo el nombre del usuario -> lista de funkos
   // se recibe el nombre del usuario y el id del funko -> funko concreto
@@ -55,7 +57,9 @@ server.get('/funkos', (req, res) => {
   }
 });
 
-
+/**
+ * Función que maneja las peticiones DELETE
+ */
 server.delete('/funkos', (req, res) => {
   if (req.query.usuario && req.query.id) {
     eliminarFunko(req.query.usuario as string, Number(req.query.id) as number, (error, resultado) => {
@@ -73,7 +77,9 @@ server.delete('/funkos', (req, res) => {
   }
 });
 
-
+/**
+ * Función que maneja las peticiones POST
+ */
 server.post('/funkos', (req, res) => {
   const funko = new Funko(req.query.nombre as string, req.query.descripcion as string, req.query.tipo as Tipo, req.query.genero as Genero, req.query.franquicia as string, Number(req.query.numero) as number, Boolean(req.query.exclusivo) as boolean, req.query.caracteristicasEspeciales as string, Number(req.query.valorMercado) as number, Number(req.query.id) as number);
   const usuario = req.query.usuario as string;
@@ -90,30 +96,9 @@ server.post('/funkos', (req, res) => {
 });
 
 
-
-//     if (req.query.usuario && req.query.nombre && req.query.descripcion && req.query.tipo && req.query.genero && req.query.franquicia && req.query.numero && req.query.exclusivo && req.query.caracteristicasEspeciales && req.query.valorMercado) {
-//       // primero eliminamos el funko
-//       const resultado1 = await eliminarFunko(req.query.usuario as string, Number(req.query.id) as number);
-//       if (resultado1 === true) {
-//         // luego añadimos el funko
-//         const funko = new Funko(req.query.nombre as string, req.query.descripcion as string, req.query.tipo as Tipo, req.query.genero as Genero, req.query.franquicia as string, Number(req.query.numero) as number, Boolean(req.query.exclusivo) as boolean, req.query.caracteristicasEspeciales as string, Number(req.query.valorMercado) as number, Number(req.query.id) as number);
-//         const resultado2 = await addFunko(funko, req.query.usuario as string);
-//         if (resultado2 === true) {
-//           res.send("Funko modificado correctamente");
-//         } else {
-//           res.status(404).send("No se ha podido modificar el funko");
-//         }
-//       } else {
-//         res.status(404).send("No se ha encontrado el funko a modificar");
-//       }
-//     } else {
-//       res.status(400).send("Faltan parámetros en la petición");
-//     }
-//   } catch (error) {
-//     console.error(error);
-//     res.status(500).send("Ha ocurrido un error en el servidor");
-//   }
-// });
+/**
+ * Función que maneja las peticiones PATCH
+ */
 server.patch('/funkos', (req, res) => {
   try {
     if (req.query.usuario && req.query.nombre && req.query.descripcion && req.query.tipo && req.query.genero && req.query.franquicia && req.query.numero && req.query.exclusivo && req.query.caracteristicasEspeciales && req.query.valorMercado && req.query.id) {
@@ -158,6 +143,9 @@ server.patch('/funkos', (req, res) => {
 });
 
 
+/**
+ * Función que maneja las peticiones PUT
+ */
 server.listen(3000, () => {
   console.log('Server is up on port 3000');
 });
